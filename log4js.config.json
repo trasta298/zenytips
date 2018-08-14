@@ -1,0 +1,19 @@
+{
+    "appenders": {
+        "out": {
+            "type": "console"
+        },
+        "bot": {
+            "type": "dateFile",
+            "filename": "./logs/console.log",
+            "pattern": "-yyyy-MM-dd.log",
+            "alwaysIncludePattern": true
+        }
+    },
+    "categories": {
+        "default":{
+            "appenders": ["out","bot"],
+            "level": "debug"
+        }
+    }
+}
