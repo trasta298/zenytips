@@ -77,8 +77,9 @@ tipbot.on = async (text, user, tweetid) => {
 				twitter.post("送金エラーです...", user, tweetid);
 			});
 			let fee = cms;
-			if(tx = await client.getTransaction(txid)){
-				fee += tx['fee'];
+      const tx= await client.getTransaction(txid)
+			if(tx){
+				fee += tx.fee;
 			}
 			await client.move(account, 'taxpot', fee);
 			twitter.post(`${amount}znyを引き出しました！(手数料0.01zny)\nhttps://zeny.insight.monaco-ex.org/tx/${txid}`,user,tweetid);
@@ -105,8 +106,9 @@ tipbot.on = async (text, user, tweetid) => {
 				twitter.post("送金エラーです...", user, tweetid);
 			});
 			let fee = cms;
-			if(tx = await client.getTransaction(txid)){
-				fee += tx['fee'];
+			const tx= await client.getTransaction(txid)
+			if(tx){
+				fee += tx.fee;
 			}
 			await client.move(account, 'taxpot', fee);
 			twitter.post(`${amount}zny(全額)を引き出しました！(手数料0.01zny)\nhttps://zeny.insight.monaco-ex.org/tx/${txid}`,user,tweetid);
@@ -133,14 +135,8 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const to_account = "tipzeny-" + to_user.id_str;
 			await client.move(account, to_account, amount);
-			const tweets = [
-				`‌@${to_name}さんへ @${name}さんから ${amount}znyのお届け物です！`,
-				`‌@${to_name}さんへ @${name}さんから ${amount}znyの投げ銭です！`,
-				`‌@${to_name}さんへ @${name}さんから ${amount}znyをtip!`,
-				`‌@${to_name}さんへ @${name}さんからZnyが来てます！ つ${amount}zny`,
-				`‌@${to_name}さんへ @${name}さんから投げ銭が来てます！ つ${amount}zny`
-			];
-			const tweet = to_name == "tra_sta" ? `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！` : tweets[Math.floor(Math.random() * tweets.length)];
+			
+			const tweet = tipbot.getanswer(userid,to_user.screen_name,amount, tipbot.generateanswer(to_name,name,amount))
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
 			tipbot.addscore(userid, (to_name == "tra_sta" ? amount*10 : amount));
@@ -162,7 +158,7 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const to_account = "tipzeny-" + to_user.id_str;
 			await client.move(account, to_account, amount);
-			const tweet = to_name == "tra_sta" ? `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！` : `￰@${to_user.screen_name}さんへ 感謝の${amount}znyだよ！`;
+			const tweet = tipbot.getanswer(userid,to_user.screen_name,amount,`￰@${to_user.screen_name}さんへ 感謝の${amount}znyだよ！`);
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
 			tipbot.addscore(userid, (to_name == "tra_sta" ? amount*10 : amount));
@@ -184,57 +180,82 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const to_account = "tipzeny-" + to_user.id_str;
 			await client.move(account, to_account, amount);
-			const tweet = to_name == "tra_sta" ? `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！` : `￰@${to_user.screen_name}さんへ ${amount}znyだよ！いいね！`;
+			const tweet =tipbot.getanswer(userid,to_user.screen_name,amount,`￰@${to_user.screen_name}さんへ ${amount}znyだよ！いいね！`)
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
-			tipbot.addscore(userid, (to_name == "tra_sta" ? amount*10 : amount));
 		}
 		//kekkon
 		else if(text.match(/結婚|ケッコン|けっこん|婚約/)){
-			const score = tipbot.getscore(userid);
+			const score = await tipbot.getscore(userid);
 			let tweets;
-			switch(true){
-				case score > 10000:
-					tweets = ["私も同じことを考えていました！えへへ…私って幸せ者ですね…♪これから一緒に幸せな家庭を築いていきましょうね！","わわっ嬉しい…！こちらこそよろしくお願いします！これからもずっと一緒ですよ…♪","わわわっ…！もちろんです！これからもよろしくお願いしますね！将来がとても楽しみです…♪"];
-					break;
-				case score > 8000:
-					tweets = ["今度一緒にお食事しませんか…？それから決めさせてください…","もう少し2人っきりのお時間が欲しいです…まだ心の準備が…","私の考えがまとまるまであともう少しだけお時間をください…"];
-					break;
-				case score > 4000:
-					tweets = ["少し早い気がします💦 今のところはまだお友達のままが良いと思います…( ˊᵕˋ ;)","うーん、もう少し考える時間をください…💦","お互いのためにもう少し、お友達のままでいさせてください…！"];
-					break;
-				case score > 2000:
-					tweets = ["気持ちは嬉しいですけど…ごめんなさい！","今のところはお友達のままでお願いしますね( ˊᵕˋ ;)","もう少し仲良くなってからでお願いします💦"];
-					break;
-				case score > 1000:
-					tweets = ["良いですよ♪…って、冗談ですよ〜！","なんだか早い気がします〜！もう少しゆっくりしてからでお願いしますね💦","こ、困ります…！まだ待ってください💦"];
-					break;
-				case score > 400:
-					tweets = ["そんなに焦らなくても大丈夫ですよ〜！","もっと仲良くなってからでお願いしますね！","お友達のままでお願いしますね！"];
-					break;
-				default:
-					tweets = ["ふふっ 変な冗談を言うお方なんですね","も〜冗談はやめてくださいってばー！","えっと…反応に困る冗談はよしてください…"];
-					break;
-			}
-			const tweet = tweets[Math.floor(Math.random() * tweets.length)];
-			twitter.post(tweet, user, tweetid);
+			if(score > 10000){
+				tweets = ["私も同じことを考えていました！えへへ…私って幸せ者ですね…♪これから一緒に幸せな家庭を築いていきましょうね！","わわっ嬉しい…！こちらこそよろしくお願いします！これからもずっと一緒ですよ…♪","わわわっ…！もちろんです！これからもよろしくお願いしますね！将来がとても楽しみです…♪"];
+		  }else if(score > 8000){
+			  tweets = ["今度一緒にお食事しませんか…？それから決めさせてください…","もう少し2人っきりのお時間が欲しいです…まだ心の準備が…","私の考えがまとまるまであともう少しだけお時間をください…"];
+		  }else if(score > 4000){
+			  tweets = ["少し早い気がします💦 今のところはまだお友達のままが良いと思います…( ˊᵕˋ ;)","うーん、もう少し考える時間をください…💦","お互いのためにもう少し、お友達のままでいさせてください…！"];
+		  }else if(score > 2000){
+			  tweets = ["気持ちは嬉しいですけど…ごめんなさい！","今のところはお友達のままでお願いしますね( ˊᵕˋ ;)","もう少し仲良くなってからでお願いします💦"];
+		  }else if(score > 1000){
+			  tweets = ["良いですよ♪…って、冗談ですよ〜！","なんだか早い気がします〜！もう少しゆっくりしてからでお願いしますね💦","こ、困ります…！まだ待ってください💦"];
+		  }else if(score > 400){
+			  tweets = ["そんなに焦らなくても大丈夫ですよ〜！","もっと仲良くなってからでお願いしますね！","お友達のままでお願いしますね！"];
+		  }else{
+			  tweets = ["ふふっ 変な冗談を言うお方なんですね","も〜冗談はやめてくださいってばー！","えっと…反応に困る冗談はよしてください…"];
+      }
+	    
+	    const tweet = tweets[Math.floor(Math.random() * tweets.length)];
+	    twitter.post(tweet, user, tweetid);
 			logger.info(`@${name} score- ${score}`);
 		}
 	}
 }
 
-tipbot.addscore = (id, p) =>{
-	let data = tipbot.getallscore();
+tipbot.addscore = async (id, p) =>{ //does not wait
+	let data = await tipbot.getallscore();
 	data[id] = data[id] ? data[id]+p : p;
 	fs.writeFile('./score.json', JSON.stringify(data), (error) => {});
 }
 
-tipbot.getscore = (id) =>{
-	return JSON.parse(fs.readFileSync('./score.json', 'utf8', (error) => {logger.error("read error\n"+error)}))[id] || 0;
+tipbot.getscore = (id) =>new Promise((resolve,reject)=>{
+  fs.readFile('./score.json', 'utf8',(err,result)=>{
+    if(err){
+      logger.error("read error\n"+err)
+      return reject()
+    }
+    resolve(JSON.parse(result)[id] || 0)
+  })
+})
+
+tipbot.getallscore = (id) =>new Promise((resolve,reject)=>{
+  fs.readFile('./score.json', 'utf8',(err,result)=>{
+    if(err){
+      logger.error("read error\n"+err)
+      return reject()
+    }
+    resolve(JSON.parse(result))
+  })
+})
+
+tipbot.getanswer= (userid,screen_name,amount,answerText)=>{
+  if(screen_name == "tra_sta") {
+    tipbot.addscore(userid, amount*10);
+    return `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！`
+  }else{
+    tipbot.addscore(userid, amount);
+    return answerText
+  }
 }
 
-tipbot.getallscore = () =>{
-	return JSON.parse(fs.readFileSync('./score.json', 'utf8', (error) => {logger.error("read error\n"+error)}));
+tipbot.generateanswer=(to,from,amount)=>{
+  const tweets = [
+		`‌@${to}さんへ @${from}さんから ${amount}znyのお届け物です！`,
+		`‌@${to}さんへ @${from}さんから ${amount}znyの投げ銭です！`,
+		`‌@${to}さんへ @${from}さんから ${amount}znyをtip!`,
+		`‌@${to}さんへ @${from}さんからZnyが来てます！ つ${amount}zny`,
+		`‌@${to}さんへ @${from}さんから投げ銭が来てます！ つ${amount}zny`
+	];
+  return tweets[Math.floor(Math.random() * tweets.length)]
 }
 
 const bot = new TwitterAPI({
@@ -250,8 +271,7 @@ twitter.post = (text, user, id) => {
 	}else if(id === 0){
 		twitter.update(text, null);
 	}else{
-		message = `@${user.screen_name} ${text}`;
-		twitter.update(message, id);
+		twitter.update(`@${user.screen_name} ${text}`, id);
 	}
 }
 
