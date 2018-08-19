@@ -133,14 +133,8 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const to_account = "tipzeny-" + to_user.id_str;
 			await client.move(account, to_account, amount);
-			const tweets = [
-				`‌@${to_name}さんへ @${name}さんから ${amount}znyのお届け物です！`,
-				`‌@${to_name}さんへ @${name}さんから ${amount}znyの投げ銭です！`,
-				`‌@${to_name}さんへ @${name}さんから ${amount}znyをtip!`,
-				`‌@${to_name}さんへ @${name}さんからZnyが来てます！ つ${amount}zny`,
-				`‌@${to_name}さんへ @${name}さんから投げ銭が来てます！ つ${amount}zny`
-			];
-			const tweet = to_name == "tra_sta" ? `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！` : tweets[Math.floor(Math.random() * tweets.length)];
+			
+			const tweet = tipbot.getanswer(userid,to_user.screen_name,amount, tipbot.generateanswer(to_name,name,amount))
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
 			tipbot.addscore(userid, (to_name == "tra_sta" ? amount*10 : amount));
@@ -162,7 +156,7 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const to_account = "tipzeny-" + to_user.id_str;
 			await client.move(account, to_account, amount);
-			const tweet = to_name == "tra_sta" ? `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！` : `￰@${to_user.screen_name}さんへ 感謝の${amount}znyだよ！`;
+			const tweet = tipbot.getanswer(userid,to_user.screen_name,amount,`￰@${to_user.screen_name}さんへ 感謝の${amount}znyだよ！`);
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
 			tipbot.addscore(userid, (to_name == "tra_sta" ? amount*10 : amount));
@@ -184,10 +178,9 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const to_account = "tipzeny-" + to_user.id_str;
 			await client.move(account, to_account, amount);
-			const tweet = to_name == "tra_sta" ? `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！` : `￰@${to_user.screen_name}さんへ ${amount}znyだよ！いいね！`;
+			const tweet =tipbot.getanswer(userid,to_user.screen_name,amount,`￰@${to_user.screen_name}さんへ ${amount}znyだよ！いいね！`)
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
-			tipbot.addscore(userid, (to_name == "tra_sta" ? amount*10 : amount));
 		}
 		//kekkon
 		else if(text.match(/結婚|ケッコン|けっこん|婚約/)){
@@ -248,6 +241,27 @@ tipbot.getallscore = (id) =>new Promise((resolve,reject)=>{
     resolve(JSON.parse(result))
   })
 })
+
+tipbot.getanswer= (userid,screen_name,amount,answerText)=>{
+  if(screen_name == "tra_sta") {
+    tipbot.addscore(userid, amount*10);
+    return `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！`
+  }else{
+    tipbot.addscore(userid, amount);
+    return answerText
+  }
+}
+
+tipbot.generateanswer=(to,from,amount)=>{
+  const tweets = [
+		`‌@${to}さんへ @${from}さんから ${amount}znyのお届け物です！`,
+		`‌@${to}さんへ @${from}さんから ${amount}znyの投げ銭です！`,
+		`‌@${to}さんへ @${from}さんから ${amount}znyをtip!`,
+		`‌@${to}さんへ @${from}さんからZnyが来てます！ つ${amount}zny`,
+		`‌@${to}さんへ @${from}さんから投げ銭が来てます！ つ${amount}zny`
+	];
+  return tweets[Math.floor(Math.random() * tweets.length)]
+}
 
 const bot = new TwitterAPI({
   consumer_key: config.zenytips.TWITTER_CONSUMER_KEY,
