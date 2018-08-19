@@ -191,7 +191,7 @@ tipbot.on = async (text, user, tweetid) => {
 		}
 		//kekkon
 		else if(text.match(/結婚|ケッコン|けっこん|婚約/)){
-			const score = tipbot.getscore(userid);
+			const score = await tipbot.getscore(userid);
 			let tweets;
 			switch(true){
 				case score > 10000:
@@ -223,19 +223,31 @@ tipbot.on = async (text, user, tweetid) => {
 	}
 }
 
-tipbot.addscore = (id, p) =>{
-	let data = tipbot.getallscore();
+tipbot.addscore = async (id, p) =>{ //does not wait
+	let data = await tipbot.getallscore();
 	data[id] = data[id] ? data[id]+p : p;
 	fs.writeFile('./score.json', JSON.stringify(data), (error) => {});
 }
 
-tipbot.getscore = (id) =>{
-	return JSON.parse(fs.readFileSync('./score.json', 'utf8', (error) => {logger.error("read error\n"+error)}))[id] || 0;
-}
+tipbot.getscore = (id) =>new Promise((resolve,reject)=>{
+  fs.readFile('./score.json', 'utf8',(err,result)=>{
+    if(err){
+      logger.error("read error\n"+err)
+      return reject()
+    }
+    resolve(JSON.parse(result)[id] || 0)
+  })
+})
 
-tipbot.getallscore = () =>{
-	return JSON.parse(fs.readFileSync('./score.json', 'utf8', (error) => {logger.error("read error\n"+error)}));
-}
+tipbot.getallscore = (id) =>new Promise((resolve,reject)=>{
+  fs.readFile('./score.json', 'utf8',(err,result)=>{
+    if(err){
+      logger.error("read error\n"+err)
+      return reject()
+    }
+    resolve(JSON.parse(result))
+  })
+})
 
 const bot = new TwitterAPI({
   consumer_key: config.zenytips.TWITTER_CONSUMER_KEY,
