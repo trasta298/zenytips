@@ -1,5 +1,6 @@
 let tipbot = {};
 let twitter = {};
+let ack = [];
 
 require('date-utils');
 const fs = require('fs');
@@ -27,6 +28,7 @@ tipbot.on = async (text, user, tweetid) => {
 	const userid = user.id_str || user.id;
 	const name = user.screen_name;
 	const account = "tipzeny-" + userid;
+	const cms = 0.01;
 	let match = null;
 
 	if((text.match(/@zenytips/) || tweetid == null) && text.search(/RT/) != 0){
@@ -56,12 +58,26 @@ tipbot.on = async (text, user, tweetid) => {
 			logger.info(`@${name} deposit- ${address}`);
 			twitter.post(tweet, user, tweetid);
 		}
+		//withdraw OK
+		else if(text.match(/OK|おけ/i) && (withdrawdata = tipbot.getWaitingWithdraw(account))){
+			const txid = await client.sendFrom(account, withdrawdata.address, withdrawdata.amount).catch((err) => {
+				logger.error(`sendform error\n${err}`);
+				twitter.post("送金エラーです...", user, tweetid);
+			});
+			let fee = cms;
+			const tx= await client.getTransaction(txid)
+			if(tx){
+				fee += tx.fee;
+			}
+			await client.move(account, 'taxpot', fee);
+			twitter.post(`${withdrawdata.amount}znyを引き出しました！(手数料0.01zny)\nhttps://zeny.insight.monaco-ex.org/tx/${txid}`,user,tweetid);
+			logger.info(`- complete. txid: ${txid}`);
+		}
 		//withdraw
 		else if(match = text.match(/(withdraw|出金)( |　)+(Z[a-zA-Z0-9]{20,50})( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
 			logger.info(`@${name} withdraw- ${match[5]}zny to ${match[3]}`);
 			const address = match[3];
 			const validate = await client.validateAddress(address);
-			const cms = 0.01;
 			if(!validate['isvalid']){
 				twitter.post("アドレスが間違っているみたいです…", user, tweetid);
 				return;
@@ -72,25 +88,14 @@ tipbot.on = async (text, user, tweetid) => {
 				return;
 			}
 			const amount = match[5]-cms;
-			const txid = await client.sendFrom(account, address, amount).catch((err) => {
-				logger.error(`sendform error\n${err}`);
-				twitter.post("送金エラーです...", user, tweetid);
-			});
-			let fee = cms;
-      const tx= await client.getTransaction(txid)
-			if(tx){
-				fee += tx.fee;
-			}
-			await client.move(account, 'taxpot', fee);
-			twitter.post(`${amount}znyを引き出しました！(手数料0.01zny)\nhttps://zeny.insight.monaco-ex.org/tx/${txid}`,user,tweetid);
-			logger.info(`- complete. txid: ${txid}`);
+			tipbot.addWaitingWithdraw(account, address, amount);
+			twitter.post(`アドレス: ${address}\nに${amount}zny送金しますか？送金するなら'OK'と入力してください`, user, null);
 		}
 		//withdrawall
 		else if(match = text.match(/(withdrawall|全額出金)( |　)+(Z[a-zA-Z0-9]{20,50})/)){
 			logger.info(`@${name} withdrawall- to ${match[3]}`);
 			const address = match[3];
 			const validate = await client.validateAddress(address);
-			const cms = 0.01;
 			if(!validate['isvalid']){
 				twitter.post("アドレスが間違っているみたいです…", user, tweetid);
 				return;
@@ -101,18 +106,8 @@ tipbot.on = async (text, user, tweetid) => {
 				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
 				return;
 			}
-			const txid = await client.sendFrom(account, address, amount).catch((err) => {
-				logger.error(`sendform error\n${err}`);
-				twitter.post("送金エラーです...", user, tweetid);
-			});
-			let fee = cms;
-			const tx= await client.getTransaction(txid)
-			if(tx){
-				fee += tx.fee;
-			}
-			await client.move(account, 'taxpot', fee);
-			twitter.post(`${amount}zny(全額)を引き出しました！(手数料0.01zny)\nhttps://zeny.insight.monaco-ex.org/tx/${txid}`,user,tweetid);
-			logger.info(`- complete. txid: ${txid}`);
+			tipbot.addWaitingWithdraw(account, address, amount);
+			twitter.post(`アドレス: ${address}\nに${amount}zny送金しますか？送金するなら'OK'と入力してください`, user, null);
 		}
 		//tip
 		else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
@@ -190,25 +185,51 @@ tipbot.on = async (text, user, tweetid) => {
 			let tweets;
 			if(score > 10000){
 				tweets = ["私も同じことを考えていました！えへへ…私って幸せ者ですね…♪これから一緒に幸せな家庭を築いていきましょうね！","わわっ嬉しい…！こちらこそよろしくお願いします！これからもずっと一緒ですよ…♪","わわわっ…！もちろんです！これからもよろしくお願いしますね！将来がとても楽しみです…♪"];
-		  }else if(score > 8000){
-			  tweets = ["今度一緒にお食事しませんか…？それから決めさせてください…","もう少し2人っきりのお時間が欲しいです…まだ心の準備が…","私の考えがまとまるまであともう少しだけお時間をください…"];
-		  }else if(score > 4000){
-			  tweets = ["少し早い気がします💦 今のところはまだお友達のままが良いと思います…( ˊᵕˋ ;)","うーん、もう少し考える時間をください…💦","お互いのためにもう少し、お友達のままでいさせてください…！"];
-		  }else if(score > 2000){
-			  tweets = ["気持ちは嬉しいですけど…ごめんなさい！","今のところはお友達のままでお願いしますね( ˊᵕˋ ;)","もう少し仲良くなってからでお願いします💦"];
-		  }else if(score > 1000){
-			  tweets = ["良いですよ♪…って、冗談ですよ〜！","なんだか早い気がします〜！もう少しゆっくりしてからでお願いしますね💦","こ、困ります…！まだ待ってください💦"];
-		  }else if(score > 400){
-			  tweets = ["そんなに焦らなくても大丈夫ですよ〜！","もっと仲良くなってからでお願いしますね！","お友達のままでお願いしますね！"];
-		  }else{
-			  tweets = ["ふふっ 変な冗談を言うお方なんですね","も〜冗談はやめてくださいってばー！","えっと…反応に困る冗談はよしてください…"];
-      }
-	    
-	    const tweet = tweets[Math.floor(Math.random() * tweets.length)];
-	    twitter.post(tweet, user, tweetid);
+			}else if(score > 8000){
+				tweets = ["今度一緒にお食事しませんか…？それから決めさせてください…","もう少し2人っきりのお時間が欲しいです…まだ心の準備が…","私の考えがまとまるまであともう少しだけお時間をください…"];
+			}else if(score > 4000){
+				tweets = ["少し早い気がします💦 今のところはまだお友達のままが良いと思います…( ˊᵕˋ ;)","うーん、もう少し考える時間をください…💦","お互いのためにもう少し、お友達のままでいさせてください…！"];
+			}else if(score > 2000){
+				tweets = ["気持ちは嬉しいですけど…ごめんなさい！","今のところはお友達のままでお願いしますね( ˊᵕˋ ;)","もう少し仲良くなってからでお願いします💦"];
+			}else if(score > 1000){
+				tweets = ["良いですよ♪…って、冗談ですよ〜！","なんだか早い気がします〜！もう少しゆっくりしてからでお願いしますね💦","こ、困ります…！まだ待ってください💦"];
+			}else if(score > 400){
+				tweets = ["そんなに焦らなくても大丈夫ですよ〜！","もっと仲良くなってからでお願いしますね！","お友達のままでお願いしますね！"];
+			}else{
+				tweets = ["ふふっ 変な冗談を言うお方なんですね","も〜冗談はやめてくださいってばー！","えっと…反応に困る冗談はよしてください…"];
+			}
+		
+			const tweet = tweets[Math.floor(Math.random() * tweets.length)];
+			twitter.post(tweet, user, tweetid);
 			logger.info(`@${name} score- ${score}`);
 		}
 	}
+}
+
+tipbot.addWaitingWithdraw = (account, address, amount) => {
+	const withdrawdata = {
+		"account" : account,
+		"address" : address,
+		"amount" : amount
+	};
+	for(let i in ack){
+		if(ack[i].account == account){
+			ack[i] = withdrawdata;
+			return;
+		}
+	}
+	ack.push(withdrawdata);
+}
+
+tipbot.getWaitingWithdraw = (account) => {
+	for(let i in ack){
+		if(ack[i].account == account){
+			const data = ack[i];
+			ack.splice(i,1);
+			return data;
+		}
+	}
+	return false;
 }
 
 tipbot.addscore = async (id, p) =>{ //does not wait
@@ -218,51 +239,51 @@ tipbot.addscore = async (id, p) =>{ //does not wait
 }
 
 tipbot.getscore = (id) =>new Promise((resolve,reject)=>{
-  fs.readFile('./score.json', 'utf8',(err,result)=>{
-    if(err){
-      logger.error("read error\n"+err)
-      return reject()
-    }
-    resolve(JSON.parse(result)[id] || 0)
-  })
+	fs.readFile('./score.json', 'utf8',(err,result)=>{
+		if(err){
+			logger.error("read error\n"+err)
+			return reject()
+		}
+		resolve(JSON.parse(result)[id] || 0)
+	})
 })
 
 tipbot.getallscore = (id) =>new Promise((resolve,reject)=>{
-  fs.readFile('./score.json', 'utf8',(err,result)=>{
-    if(err){
-      logger.error("read error\n"+err)
-      return reject()
-    }
-    resolve(JSON.parse(result))
-  })
+	fs.readFile('./score.json', 'utf8',(err,result)=>{
+		if(err){
+			logger.error("read error\n"+err)
+			return reject()
+		}
+		resolve(JSON.parse(result))
+	})
 })
 
 tipbot.getanswer= (userid,screen_name,amount,answerText)=>{
-  if(screen_name == "tra_sta") {
-    tipbot.addscore(userid, amount*10);
-    return `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！`
-  }else{
-    tipbot.addscore(userid, amount);
-    return answerText
-  }
+	if(screen_name == "tra_sta") {
+		tipbot.addscore(userid, amount*10);
+		return `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！`
+	}else{
+		tipbot.addscore(userid, amount);
+		return answerText
+	}
 }
 
 tipbot.generateanswer=(to,from,amount)=>{
-  const tweets = [
+	const tweets = [
 		`‌@${to}さんへ @${from}さんから ${amount}znyのお届け物です！`,
 		`‌@${to}さんへ @${from}さんから ${amount}znyの投げ銭です！`,
 		`‌@${to}さんへ @${from}さんから ${amount}znyをtip!`,
 		`‌@${to}さんへ @${from}さんからZnyが来てます！ つ${amount}zny`,
 		`‌@${to}さんへ @${from}さんから投げ銭が来てます！ つ${amount}zny`
 	];
-  return tweets[Math.floor(Math.random() * tweets.length)]
+	return tweets[Math.floor(Math.random() * tweets.length)]
 }
 
 const bot = new TwitterAPI({
-  consumer_key: config.zenytips.TWITTER_CONSUMER_KEY,
-  consumer_secret: config.zenytips.TWITTER_CONSUMER_SECRET,
-  access_token_key: config.zenytips.TWITTER_ACCESS_TOKEN,
-  access_token_secret: config.zenytips.TWITTER_ACCESS_TOKEN_SECRET
+	consumer_key: config.zenytips.TWITTER_CONSUMER_KEY,
+	consumer_secret: config.zenytips.TWITTER_CONSUMER_SECRET,
+	access_token_key: config.zenytips.TWITTER_ACCESS_TOKEN,
+	access_token_secret: config.zenytips.TWITTER_ACCESS_TOKEN_SECRET
 });
 
 twitter.post = (text, user, id) => {
