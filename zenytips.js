@@ -14,7 +14,7 @@ const MY_ID = "940524286531461120";//@zenytips
 
 tipbot.aaapi = async (data) => {
 	if(data.tweet_create_events && data.tweet_create_events[0].user.id_str != MY_ID){
-		tipbot.on(data.tweet_create_events[0].text, data.tweet_create_events[0].user, data.tweet_create_events[0].id_str)
+		tipbot.on(data.tweet_create_events[0].extended_tweet && data.tweet_create_events[0].extended_tweet.full_text ? data.tweet_create_events[0].extended_tweet.full_text : data.tweet_create_events[0].text, data.tweet_create_events[0].user, data.tweet_create_events[0].id_str)
 	}else if(data.direct_message_events && data.direct_message_events[0].message_create.sender_id != MY_ID){
 		const sender = data.direct_message_events[0].message_create.sender_id;
 		tipbot.on(data.direct_message_events[0].message_create.message_data.text, data.users[sender], null);
