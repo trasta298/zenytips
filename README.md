@@ -8,19 +8,22 @@ botが止まっていた時や質問があるときは[開発者twitter](https:/
 ## balance/残高
 ### @zenytips balance (コメント)
 残高を確認できます。  
-例:`@zenytips balance`    
+例:`@zenytips balance`  
+
 <img src="http://imgur.com/YfjYg3S.png" alt="" width="50%" height="50%">  
 
 ## deposit/入金  
 ### @zenytips deposit (コメント)  
 入金用アドレスを返します。  
-例:`@zenytips deposit`    
+例:`@zenytips deposit`  
+
 <img src="http://imgur.com/Pdh1i45.png" alt="" width="50%" height="50%">  
 
 ## withdraw/出金
 ### @zenytips withdraw 受取ZNYアドレス 出金額
 指定した額を出金することができます。DMでの確認を行うのでりん姫をフォローするかDMを開放をお願いします。  
-例:`@zenytips withdraw EXAMPleAdDreSS 10`    
+例:`@zenytips withdraw EXAMPleAdDreSS 10`  
+
 <img src="http://imgur.com/r6VoPUY.png" alt="" width="50%" height="50%">  
 
 ## withdrawall/全額出金
@@ -33,7 +36,8 @@ botが止まっていた時や質問があるときは[開発者twitter](https:/
 指定された額のZNYを相手に送ります。  
 例:`@zenytips tip @tra_sta 3.9 ありがとう！`  
 ### @￰zenytips tip @￰zenytips 投銭額  
-で開発者に寄付できます。サーバー維持費に使うので是非投げ銭ください。    
+で開発者に寄付できます。サーバー維持費に使うので是非投げ銭ください。  
+
 <img src="http://imgur.com/cU54fAx.png" alt="" width="50%" height="50%">  
 
 ## thanks
