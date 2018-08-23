@@ -40,6 +40,10 @@ tipbot.on = async (text, user, tweetid) => {
 			const formatted = jp.toFormat("YYYY/MM/DD HH24:MI:SS");
 			twitter.post(`来たぞ (${formatted})`, user, tweetid);
 		}
+		//help
+		if(text.match(/help|ヘルプ/i)){
+			twitter.post(`https://github.com/trasta298/zenytips/blob/master/README.md`, user, tweetid);
+		}
 		//balance
 		else if(text.match(/balance|残高/i)){
 			const balance_all = await client.getBalance(account, 0);
