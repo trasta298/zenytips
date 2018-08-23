@@ -89,7 +89,7 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const amount = match[5]-cms;
 			tipbot.addWaitingWithdraw(account, address, amount);
-			twitter.post(`アドレス: ${address}\nに${amount}zny送金しますか？送金するなら'OK'と入力してください`, user, null);
+			twitter.post(`アドレス: ${address}\nに${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null);
 		}
 		//withdrawall
 		else if(match = text.match(/(withdrawall|全額出金)( |　)+(Z[a-zA-Z0-9]{20,50})/)){
@@ -107,7 +107,7 @@ tipbot.on = async (text, user, tweetid) => {
 				return;
 			}
 			tipbot.addWaitingWithdraw(account, address, amount);
-			twitter.post(`アドレス: ${address}\nに${amount}zny送金しますか？送金するなら'OK'と入力してください`, user, null);
+			twitter.post(`アドレス: ${address}\nに${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null);
 		}
 		//tip
 		else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
@@ -134,7 +134,6 @@ tipbot.on = async (text, user, tweetid) => {
 			const tweet = tipbot.getanswer(userid,to_user.screen_name,amount, tipbot.generateanswer(to_name,name,amount))
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
-			tipbot.addscore(userid, (to_name == "tra_sta" ? amount*10 : amount));
 		}
 		//thanks
 		else if(match = text.match(/(thanks|感謝)( |　)+@([A-z0-9_]+)/)){
@@ -156,7 +155,6 @@ tipbot.on = async (text, user, tweetid) => {
 			const tweet = tipbot.getanswer(userid,to_user.screen_name,amount,`￰@${to_user.screen_name}さんへ 感謝の${amount}znyだよ！`);
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
-			tipbot.addscore(userid, (to_name == "tra_sta" ? amount*10 : amount));
 		}
 		//good
 		else if(match = text.match(/(good)( |　)+@([A-z0-9_]+)/)){
