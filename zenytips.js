@@ -33,16 +33,35 @@ tipbot.on = async (text, user, tweetid) => {
 
 	if((text.match(/@zenytips/) || tweetid == null) && text.search(/RT/) != 0){
 		text = text.replace(/\n/, " ");
-		//いでよとらすた
-		if(text.match(/いでよとらすた/)){
-			const dt = new Date();
-			const jp = new Date(dt.getTime() + 9 * 60 * 60 * 1000);
-			const formatted = jp.toFormat("YYYY/MM/DD HH24:MI:SS");
-			twitter.post(`来たぞ (${formatted})`, user, tweetid);
-		}
 		//help
 		if(text.match(/help|ヘルプ/i)){
 			twitter.post(`https://github.com/trasta298/zenytips/blob/master/README.md`, user, tweetid);
+		}
+		//tip
+		else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
+			logger.info(`@${name} tip- to @${match[3]} ${match[5]}zny`);
+			const amount = parseFloat(match[5]);
+			if(amount <= 0){
+				twitter.post("0イカの数は指定できませんっ！", user, tweetid);
+				return;
+			}
+			const to_name = match[3] == "zenytips" ? "tra_sta" : match[3];
+			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
+			if(to_user == null){
+				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
+				return;
+			}
+			const balance = await client.getBalance(account, 6);
+			if(amount > balance){
+				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
+				return;
+			}
+			const to_account = "tipzeny-" + to_user.id_str;
+			await client.move(account, to_account, amount);
+			
+			const tweet = tipbot.getanswer(userid,to_user.screen_name,amount, tipbot.generateanswer(to_name,name,amount))
+			twitter.post(tweet, user, tweetid);
+			logger.info("- complete.");
 		}
 		//balance
 		else if(text.match(/balance|残高/i)){
@@ -112,32 +131,6 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			tipbot.addWaitingWithdraw(account, address, amount);
 			twitter.post(`アドレス: ${address}\nに${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null);
-		}
-		//tip
-		else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
-			logger.info(`@${name} tip- to @${match[3]} ${match[5]}zny`);
-			const amount = parseFloat(match[5]);
-			if(amount <= 0){
-				twitter.post("0イカの数は指定できませんっ！", user, tweetid);
-				return;
-			}
-			const to_name = match[3] == "zenytips" ? "tra_sta" : match[3];
-			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
-			if(to_user == null){
-				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
-				return;
-			}
-			const balance = await client.getBalance(account, 6);
-			if(amount > balance){
-				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
-				return;
-			}
-			const to_account = "tipzeny-" + to_user.id_str;
-			await client.move(account, to_account, amount);
-			
-			const tweet = tipbot.getanswer(userid,to_user.screen_name,amount, tipbot.generateanswer(to_name,name,amount))
-			twitter.post(tweet, user, tweetid);
-			logger.info("- complete.");
 		}
 		//thanks
 		else if(match = text.match(/(thanks|感謝)( |　)+@([A-z0-9_]+)/)){
