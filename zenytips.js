@@ -1,6 +1,8 @@
 let tipbot = {};
 let twitter = {};
-let ack = [];
+let pending = {
+	"w":[],"t":[]
+};
 
 require('date-utils');
 const fs = require('fs');
@@ -61,8 +63,38 @@ tipbot.on = async (text, user, tweetid) => {
 			const to_account = "tipzeny-" + to_user.id_str;
 			await client.move(account, to_account, amount);
 			
-			const tweet = tipbot.getanswer(userid,to_user.screen_name,amount, tipbot.generateanswer(to_name,name,amount))
+			const tweet = tipbot.getanswer(userid,to_name,amount, tipbot.generateanswer(to_name,name,amount))
 			twitter.post(tweet, user, tweetid);
+			logger.info("- complete.");
+		}
+		//tip(ミス)
+		else if((match = text.match(/(tip|send|投げ銭|投銭)( |　)+(\d+\.?\d*|\d*\.?\d+)/)) && (mention = text.match(/@([A-z0-9_]+)/))){
+			logger.info(`@${name} tip- to @${mention[1]} ${match[3]}zny`);
+			const amount = parseFloat(match[3]);
+			if(amount <= 0){
+				twitter.post("0イカの数は指定できませんっ！", user, tweetid);
+				return;
+			}
+			const to_name = mention[1] == "zenytips" ? "tra_sta" : mention[1];
+			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
+			if(to_user == null){
+				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
+				return;
+			}
+			const balance = await client.getBalance(account, 6);
+			if(amount > balance){
+				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
+				return;
+			}
+			const to_account = "tipzeny-" + to_user.id_str;
+			tipbot.addWaitingTip(account, to_account, amount, to_name, tweetid);
+			twitter.post(`@${mention[1]} さんに${amount}zny tipしますか？送金するなら'Tip'と入力してください`, user, null);
+		}
+		//Tip OK
+		else if(text.match(/Tip/) && (tipdata = tipbot.getWaitingTip(account))){
+			await client.move(account, tipdata.to_account, tipdata.amount);
+			const tweet = tipbot.getanswer(userid,tipdata.to_name,tipdata.amount, tipbot.generateanswer(tipdata.to_name,name,tipdata.amount))
+			twitter.post(tweet, user, tipdata.tweetid);
 			logger.info("- complete.");
 		}
 		//balance
@@ -138,7 +170,7 @@ tipbot.on = async (text, user, tweetid) => {
 		else if(match = text.match(/(thanks|感謝)( |　)+@([A-z0-9_]+)/)){
 			const amount = 3.939;
 			logger.info(`@${name} tip- to @${match[3]} ${amount}zny`);
-			const to_name = match[3];
+			const to_name = match[3] == "zenytips" ? "tra_sta" : match[3];
 			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
 			if(to_user == null){
 				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
@@ -151,7 +183,7 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const to_account = "tipzeny-" + to_user.id_str;
 			await client.move(account, to_account, amount);
-			const tweet = tipbot.getanswer(userid,to_user.screen_name,amount,`￰@${to_user.screen_name}さんへ 感謝の${amount}znyだよ！`);
+			const tweet = tipbot.getanswer(userid,to_name,amount,`￰@${to_name}さんへ 感謝の${amount}znyだよ！`);
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
 		}
@@ -159,7 +191,7 @@ tipbot.on = async (text, user, tweetid) => {
 		else if(match = text.match(/(good)( |　)+@([A-z0-9_]+)/)){
 			const amount = 1.14;
 			logger.info(`@${name} tip- to @${match[3]} ${amount}zny`);
-			const to_name = match[3];
+			const to_name = match[3] == "zenytips" ? "tra_sta" : match[3];
 			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
 			if(to_user == null){
 				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
@@ -172,7 +204,7 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const to_account = "tipzeny-" + to_user.id_str;
 			await client.move(account, to_account, amount);
-			const tweet =tipbot.getanswer(userid,to_user.screen_name,amount,`￰@${to_user.screen_name}さんへ ${amount}znyだよ！いいね！`)
+			const tweet =tipbot.getanswer(userid,to_name,amount,`￰@${to_name}さんへ ${amount}znyだよ！いいね！`)
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
 		}
@@ -209,20 +241,48 @@ tipbot.addWaitingWithdraw = (account, address, amount) => {
 		"address" : address,
 		"amount" : amount
 	};
-	for(let i in ack){
-		if(ack[i].account == account){
-			ack[i] = withdrawdata;
+	for(let i in pending['w']){
+		if(pending['w'][i].account == account){
+			pending['w'][i] = withdrawdata;
 			return;
 		}
 	}
-	ack.push(withdrawdata);
+	pending['w'].push(withdrawdata);
 }
 
 tipbot.getWaitingWithdraw = (account) => {
-	for(let i in ack){
-		if(ack[i].account == account){
-			const data = ack[i];
-			ack.splice(i,1);
+	for(let i in pending['w']){
+		if(pending['w'][i].account == account){
+			const data = pending['w'][i];
+			pending['w'].splice(i,1);
+			return data;
+		}
+	}
+	return false;
+}
+
+tipbot.addWaitingTip = (account, to_account, amount, to_name, tweetid) => {
+	const withdrawdata = {
+		"account" : account,
+		"to_account" : to_account,
+		"amount" : amount,
+		"to_name" : to_name,
+		"tweetid" : tweetid
+	};
+	for(let i in pending['t']){
+		if(pending['t'][i].account == account){
+			pending['t'][i] = withdrawdata;
+			return;
+		}
+	}
+	pending['t'].push(withdrawdata);
+}
+
+tipbot.getWaitingTip = (account) => {
+	for(let i in pending['t']){
+		if(pending['t'][i].account == account){
+			const data = pending['t'][i];
+			pending['t'].splice(i,1);
 			return data;
 		}
 	}
