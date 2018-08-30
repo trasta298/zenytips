@@ -13,17 +13,20 @@ botが止まっていた時や質問があるときは[開発者twitter](https:/
 例:`@monatipbot balance`  
 
 
+
 ## deposit/入金  
 ### @monatipbot deposit (コメント)  
 入金用アドレスを返します。  
 例:`@monatipbot deposit`  
 
+<img src="https://imgur.com/a/rP6TuZW.png" alt="" width="50%" height="50%">  
 
 ## withdraw/出金
 ### @monatipbot withdraw 受取MONAアドレス 出金額
 指定した額を出金することができます。DMでの確認を行うのでbotをフォローするかDMの開放をお願いします。  
 例:`@monatipbot withdraw EXAMPleAdDreSS 10`  
 
+<img src="https://imgur.com/a/RLHVoPR.png" alt="" width="50%" height="50%">  
 
 ## withdrawall/全額出金
 ### @monatipbot withdrawall 受取MONAアドレス
@@ -35,7 +38,9 @@ botに預けている残高すべてを出金することができます。DMで
 指定された額のMONAを相手に送ります。  
 例:`@monatipbot tip @tra_sta 3.9 ありがとう！`  
 ### @monatipbot tip @monatipbot 投銭額  
-で開発者に寄付できます。サーバー維持費に使うので是非投げ銭ください。  
+で開発者に寄付できます。サーバー維持費に使うので是非投げ銭ください。 
+
+<img src="https://imgur.com/a/rRuTDJs.png" alt="" width="50%" height="50%">  
 
 
 ## thanks
