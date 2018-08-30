@@ -10,6 +10,8 @@ const TwitterAPI = require('twitter');
 const config = require('./config.json');
 log4js.configure('./log4js.config.json');
 const logger = log4js.getLogger('bot');
+const BigNumber = require('bignumber.js');
+BigNumber.config({ DECIMAL_PLACES: 8 });
 
 const MY_ID = "940524286531461120";//@zenytips
 
@@ -110,7 +112,7 @@ tipbot.on = async (text, user, tweetid) => {
 				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
 				return;
 			}
-			const amount = match[5]-cms;
+			const amount = new BigNumber(match[5],10).minus(cms);
 			tipbot.addWaitingWithdraw(account, address, amount);
 			twitter.post(`アドレス: ${address}\nに${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null);
 		}
@@ -124,7 +126,7 @@ tipbot.on = async (text, user, tweetid) => {
 				return;
 			}
 			const balance = await client.getBalance(account, 6);
-			const amount = balance-cms;
+			const amount = new BigNumber(balance).minus(cms);
 			if(amount <= 0){
 				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
 				return;
