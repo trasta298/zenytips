@@ -1,6 +1,8 @@
-# Mona Tip bot How to use
+# How to use ももなちゃん
 
-ここはMona Tip botのヘルプページです。以下で使えるコマンドを参照してください。  
+ここはももな@MonaTipbot(@monatipbot)のヘルプページです。  
+このbotではTwitter上でモナコインを渡したりすることができます。  
+以下で使えるコマンドを参照してください。  
 botが止まっていた時や質問があるときは[開発者twitter](https://twitter.com/tra_sta)まで。  
 ※注意    
 ・コマンドを使うときの空白はすべて半角にしてください。  
