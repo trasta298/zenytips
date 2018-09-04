@@ -8,6 +8,7 @@ require('date-utils');
 const fs = require('fs');
 const log4js = require('log4js');
 const client = require('./client');
+const client_mona = require('./client_mona');
 const TwitterAPI = require('twitter');
 const config = require('./config.json');
 log4js.configure('./log4js.config.json');
@@ -32,6 +33,7 @@ tipbot.on = async (text, user, tweetid) => {
 	const userid = user.id_str || user.id;
 	const name = user.screen_name;
 	const account = "tipzeny-" + userid;
+	const account_mona = "tipmona-" + userid;
 	const cms = 0.01;
 	let match = null;
 
@@ -40,6 +42,32 @@ tipbot.on = async (text, user, tweetid) => {
 		//help
 		if(text.match(/help|ヘルプ/i)){
 			twitter.post(`https://github.com/trasta298/zenytips/blob/master/README.md`, user, tweetid);
+		}
+		//tip mona
+		else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(\d+\.?\d*|\d*\.?\d+)( |　)+mona/)){
+			logger.info(`@${name} tip- to @${match[3]} ${match[5]}mona`);
+			const amount = parseFloat(match[5]);
+			if(amount <= 0){
+				twitter.post("0イカの数は指定できませんっ！", user, tweetid);
+				return;
+			}
+			const to_name = match[3] == "zenytips" ? "tra_sta" : match[3];
+			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
+			if(to_user == null){
+				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
+				return;
+			}
+			const balance = await client_mona.getBalance(account_mona, 30);
+			if(amount > balance){
+				twitter.post(`残高が足りないよー！\n残高:${balance}mona`, user, tweetid);
+				return;
+			}
+			const to_account = "tipmona-" + to_user.id_str;
+			await client_mona.move(account_mona, to_account, amount);
+			
+			const tweet = tipbot.getanswer(userid,to_name,amount, tipbot.generateanswer_mona(to_name,name,amount))
+			twitter.post(tweet, user, tweetid);
+			logger.info("- complete.");
 		}
 		//tip
 		else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
@@ -97,6 +125,17 @@ tipbot.on = async (text, user, tweetid) => {
 			twitter.post(tweet, user, tipdata.tweetid);
 			logger.info("- complete.");
 		}
+		//balance mona
+		else if(text.match(/balance mona|残高 mona/i)){
+			const balance_all = await client_mona.getBalance(account_mona, 0);
+			const balance = await client_mona.getBalance(account_mona, 30);
+			let tweet = `現在の残高は ${balance}monaです！`;
+			if(balance_all > balance){
+				tweet += `承認中との合計(${balance_all}mona)`;
+			}
+			logger.info(`@${name}(${userid}) balance- ${balance}mona all(${balance_all}mona)`);
+			twitter.post(tweet, user, tweetid);
+		}
 		//balance
 		else if(text.match(/balance|残高/i)){
 			const balance_all = await client.getBalance(account, 0);
@@ -106,6 +145,13 @@ tipbot.on = async (text, user, tweetid) => {
 				tweet += `承認中との合計(${balance_all}zny)`;
 			}
 			logger.info(`@${name}(${userid}) balance- ${balance}zny all(${balance_all}zny)`);
+			twitter.post(tweet, user, tweetid);
+		}
+		//deposit mona
+		else if(text.match(/deposit mona|入金 mona/i)){
+			const address = await client_mona.getAccountAddress(account_mona);
+			let tweet = address + "\nに送金お願いします！";
+			logger.info(`@${name} deposit- ${address}`);
 			twitter.post(tweet, user, tweetid);
 		}
 		//deposit
@@ -129,6 +175,57 @@ tipbot.on = async (text, user, tweetid) => {
 			await client.move(account, 'taxpot', fee);
 			twitter.post(`${withdrawdata.amount}znyを引き出しました！(手数料0.01zny)\nhttps://zeny.insight.monaco-ex.org/tx/${txid}`,user,tweetid);
 			logger.info(`- complete. txid: ${txid}`);
+		}
+		//withdraw mona OK
+		else if(text.match(/OK|おけ/i) && (withdrawdata = tipbot.getWaitingWithdraw(account_mona))){
+			const txid = await client_mona.sendFrom(account_mona, withdrawdata.address, withdrawdata.amount).catch((err) => {
+				twitter.post("送金エラーです...", user, tweetid);
+				logger.error(`sendform error\n${err}`);
+			});
+			let fee = cms;
+			const tx= await client_mona.getTransaction(txid)
+			if(tx){
+				fee += tx.fee;
+			}
+			await client_mona.move(account_mona, 'taxpot', fee);
+			twitter.post(`${withdrawdata.amount}monaを引き出しました！(手数料0.01mona)\nhttps://mona.chainsight.info/tx/${txid}`,user,tweetid);
+			logger.info(`- complete. txid: ${txid}`);
+		}
+		//withdraw mona
+		else if(match = text.match(/(withdraw|出金)( |　)+([MP][a-zA-Z0-9]{20,50})( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
+			logger.info(`@${name} withdraw- ${match[5]}mona to ${match[3]}`);
+			const address = match[3];
+			const validate = await client_mona.validateAddress(address);
+			if(!validate['isvalid']){
+				twitter.post("アドレスが間違っているみたい…", user, tweetid);
+				return;
+			}
+			const balance = await client_mona.getBalance(account_mona, 30);
+			if(match[5] <= cms || match[5] > balance){
+				twitter.post(`残高が足りないみたいですっ\n残高:${balance}mona`, user, tweetid);
+				return;
+			}
+			const amount = new BigNumber(match[5],10).minus(cms);
+			tipbot.addWaitingWithdraw(account_mona, address, amount);
+			twitter.post(`アドレス: ${address}\nに${amount}mona(手数料0.01mona)送金するよ！間違いが無ければ'OK'と入力してね！`, user, null);
+		}
+		//withdrawall mona
+		else if(match = text.match(/(withdrawall|全額出金)( |　)+([MP][a-zA-Z0-9]{20,50})/)){
+			logger.info(`@${name} withdrawall- to ${match[3]}`);
+			const address = match[3];
+			const validate = await client_mona.validateAddress(address);
+			if(!validate['isvalid']){
+				twitter.post("アドレスが間違っているみたい…", user, tweetid);
+				return;
+			}
+			const balance = await client_mona.getBalance(account_mona, 30);
+			const amount = new BigNumber(balance).minus(cms);
+			if(amount <= 0){
+				twitter.post(`残高が足りないみたいですっ\n残高:${balance}mona`, user, tweetid);
+				return;
+			}
+			tipbot.addWaitingWithdraw(account_mona, address, amount);
+			twitter.post(`アドレス: ${address}\nに${amount}mona(手数料0.01mona)送金するよ！間違いが無ければ'OK'と入力してね！`, user, null);
 		}
 		//withdraw
 		else if(match = text.match(/(withdraw|出金)( |　)+(Z[a-zA-Z0-9]{20,50})( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
@@ -318,6 +415,9 @@ tipbot.getallscore = (id) =>new Promise((resolve,reject)=>{
 tipbot.getanswer= (userid,screen_name,amount,answerText)=>{
 	if(screen_name == "tra_sta") {
 		tipbot.addscore(userid, amount*10);
+		if(answerText.match(/mona/)){
+			return `${amount}mona受け取りましたっ！りん姫への寄付ありがとうございます！`
+		}
 		return `${amount}zny受け取りましたっ！りん姫への寄付ありがとうございます！`
 	}else{
 		tipbot.addscore(userid, amount);
@@ -332,6 +432,21 @@ tipbot.generateanswer=(to,from,amount)=>{
 		`‌@${to}さんへ @${from}さんから ${amount}znyをtip!`,
 		`‌@${to}さんへ @${from}さんからZnyが来てます！ つ${amount}zny`,
 		`‌@${to}さんへ @${from}さんから投げ銭が来てます！ つ${amount}zny`
+	];
+	return tweets[Math.floor(Math.random() * tweets.length)]
+}
+
+tipbot.generateanswer_mona=(to,from,amount)=>{
+	const tweets = [
+		`‌@${to}さんへ @${from}さんから ${amount}monaのお届け物です！`,
+		`‌@${to}さんへ @${from}さんから ${amount}monaのお届け物ですよ！`,
+		`‌@${to}さんへ @${from}さんから ${amount}monaのお届け物ですよ〜！`,
+		`‌@${to}さんへ @${from}さんから ${amount}monaのお届け物ですよー！`,
+		`‌@${to}さんへ @${from}さんからmonaが来てます！ つ${amount}mona`,
+		`‌@${to}さんへ @${from}さんからmonaが来てますよ！ つ${amount}mona`,
+		`‌@${to}さんへ @${from}さんからmonaが来てますよっ！ つ${amount}mona`,
+		`‌@${to}さんへ @${from}さんからmonaが来てますよ～！ つ${amount}mona`,
+		`‌@${to}さんへ @${from}さんからmonaが来てますよー！ つ${amount}mona`,
 	];
 	return tweets[Math.floor(Math.random() * tweets.length)]
 }
