@@ -41,7 +41,7 @@ tipbot.on = async (text, user, tweetid) => {
 		text = text.replace(/\n/, " ");
 		//help
 		if(text.match(/help|ヘルプ/i)){
-			twitter.post(`https://github.com/trasta298/zenytips/blob/master/README.md`, user, tweetid);
+			twitter.post(`使い方は以下のリンクを見てください！\nhttps://github.com/trasta298/zenytips/blob/master/README.md`, user, tweetid);
 		}
 		//tip mona
 		else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(\d+\.?\d*|\d*\.?\d+)( |　)+mona/)){
@@ -164,8 +164,8 @@ tipbot.on = async (text, user, tweetid) => {
 		//withdraw OK
 		else if(text.match(/OK|おけ/i) && (withdrawdata = tipbot.getWaitingWithdraw(account))){
 			const txid = await client.sendFrom(account, withdrawdata.address, withdrawdata.amount).catch((err) => {
-				logger.error(`sendform error\n${err}`);
 				twitter.post("送金エラーです...", user, tweetid);
+				logger.error(`sendform error\n${err}`);
 			});
 			let fee = cms;
 			const tx= await client.getTransaction(txid)
