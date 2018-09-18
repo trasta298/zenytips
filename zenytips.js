@@ -55,6 +55,12 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 				[['tip-check-on','tipの確認設定をする'],['tip-check-off','tipの確認設定をしない']]
 			);
 		}
+		//settings
+		if(match = text.match(/tip-check-(on|off)/i)){
+			const val = match[1] == "on" ? true : false;
+			tipbot.changesetting(userid, "tip-check",val);
+			twitter.post(`tip時のDM確認を${match[1]}に設定しました！`, user, null);
+		}
 		//balance
 		else if(text.match(/balance|残高/i)){
 			const balance_all = await client.getBalance(account, 0);
@@ -112,8 +118,15 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 				return;
 			}
 			const to_account = "tipzeny-" + to_user.id_str;
+
+			const check = await tipbot.getscore(userid, "tip-check");
+			if(check == true){
+				tipbot.addWaitingTip(account, to_account, amount, to_name, tweetid);
+				twitter.post(`@${match[3]} さんに${amount}zny tipしますか？送金するなら'Tip'と入力してください`, user, null, [['Tip','送金'],['Cancel','キャンセル']]);
+				return;
+			}
+
 			await client.move(account, to_account, amount);
-			
 			const tweet = tipbot.getanswer(userid,to_name,amount, tipbot.generateanswer(to_name,name,amount));
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
@@ -342,7 +355,7 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 		}
 		//kekkon
 		else if(text.match(/結婚|ケッコン|けっこん|婚約/)){
-			const score = await tipbot.getscore(userid);
+			const score = await tipbot.getscore(userid, "score");
 			let tweets;
 			if(score > 10000){
 				tweets = ["私も同じことを考えていました！えへへ…私って幸せ者ですね…♪これから一緒に幸せな家庭を築いていきましょうね！","わわっ嬉しい…！こちらこそよろしくお願いします！これからもずっと一緒ですよ…♪","わわわっ…！もちろんです！これからもよろしくお願いしますね！将来がとても楽しみです…♪"];
@@ -437,23 +450,29 @@ tipbot.getWaitingTip = (account) => {
 	return false;
 }
 
-tipbot.addscore = async (id, p) =>{ //does not wait
+tipbot.changesetting = async (id, set, val) =>{ //does not wait
 	let data = await tipbot.getallscore();
-	data[id] = data[id] ? data[id]+p : p;
+	data[id][set] = val;
 	fs.writeFile('./score.json', JSON.stringify(data), (error) => {});
 }
 
-tipbot.getscore = (id) =>new Promise((resolve,reject)=>{
+tipbot.addscore = async (id, p) =>{ //does not wait
+	let data = await tipbot.getallscore();
+	data[id].score = data[id].score ? data[id].score+p : p;
+	fs.writeFile('./score.json', JSON.stringify(data), (error) => {});
+}
+
+tipbot.getscore = (id, val) =>new Promise((resolve,reject)=>{
 	fs.readFile('./score.json', 'utf8',(err,result)=>{
 		if(err){
 			logger.error("read error\n"+err)
 			return reject()
 		}
-		resolve(JSON.parse(result)[id] || 0)
+		resolve(JSON.parse(result)[id][val] || 0)
 	})
 })
 
-tipbot.getallscore = (id) =>new Promise((resolve,reject)=>{
+tipbot.getallscore = () =>new Promise((resolve,reject)=>{
 	fs.readFile('./score.json', 'utf8',(err,result)=>{
 		if(err){
 			logger.error("read error\n"+err)
