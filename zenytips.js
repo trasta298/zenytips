@@ -41,27 +41,30 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 		text = text.replace(/\n/, " ");
 		//help
 		if(text.match(/help|ヘルプ/i)){
+			twitter.post(`このbotの使い方を見たいときは'How to use'、設定をしたいときは'Settings'と入力してください！`, user, null, 
+				[['How to use','使い方'],['Settings','設定']]
+			);
+		}
+		//how to use
+		if(text.search(/How to use|使い方/i) == 0){
 			twitter.post(`使い方は以下のリンクを見てください！\nhttps://github.com/trasta298/zenytips/blob/master/README.md`, user, tweetid);
 		}
-		//rain
-		else if(match = text.match(/(rain)( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
-			if(tweetid == null || tweetid == 0){
-				return;
-			}
-			logger.info(`@${name} rain- ${match[3]}zny`);
-			const amount = parseFloat(match[3]);
-			if(amount <= 0){
-				twitter.post("0イカの数は指定できませんっ！", user, tweetid);
-				return;
-			}
+		//settings
+		if(text.search(/Settings|設定/i) == 0){
+			twitter.post(`TipするときDMで毎回確認をするときは'tip-check-on'、しないときは'tip-check-off'と入力してください！`, user, null, 
+				[['tip-check-on','tipの確認設定をする'],['tip-check-off','tipの確認設定をしない']]
+			);
+		}
+		//balance
+		else if(text.match(/balance|残高/i)){
+			const balance_all = await client.getBalance(account, 0);
 			const balance = await client.getBalance(account, 6);
-			if(amount > balance){
-				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
-				return;
+			let tweet = `現在の残高は ${balance}znyです！`;
+			if(balance_all > balance){
+				tweet += `承認中との合計(${balance_all}zny)`;
 			}
-			const tweet = `【お知らせ】\nリプライ先のツイートをRTした人に ${amount}znyのプレゼント！`;
+			logger.info(`@${name}(${userid}) balance- ${balance}zny all(${balance_all}zny)`);
 			twitter.post(tweet, user, tweetid);
-			tipbot.addRain(tweetid, account, amount);
 		}
 		//tip mona
 		else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(\d+\.?\d*|\d*\.?\d+)( |　)+mona/)){
@@ -136,7 +139,7 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 			}
 			const to_account = "tipzeny-" + to_user.id_str;
 			tipbot.addWaitingTip(account, to_account, amount, to_name, tweetid);
-			twitter.post(`@${mention[1]} さんに${amount}zny tipしますか？送金するなら'Tip'と入力してください`, user, null);
+			twitter.post(`@${mention[1]} さんに${amount}zny tipしますか？送金するなら'Tip'と入力してください`, user, null, [['Tip','送金'],['Cancel','キャンセル']]);
 		}
 		//Tip OK
 		else if(text.match(/Tip/) && (tipdata = tipbot.getWaitingTip(account))){
@@ -230,7 +233,7 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 			}
 			const amount = new BigNumber(match[5],10).minus(cms);
 			tipbot.addWaitingWithdraw(account_mona, address, amount);
-			twitter.post(`${amount}mona(手数料0.01mona)送金するよ！間違いが無ければ'OK'と入力してね！`, user, null);
+			twitter.post(`${amount}mona(手数料0.01mona)送金するよ！間違いが無ければ'OK'と入力してね！`, user, null, [['OK','送金'],['Cancel','キャンセル']]);
 		}
 		//withdrawall mona
 		else if(match = text.match(/(withdrawall|全額出金)( |　)+([MP][a-zA-Z0-9]{20,50})/)){
@@ -251,7 +254,7 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 				return;
 			}
 			tipbot.addWaitingWithdraw(account_mona, address, amount);
-			twitter.post(`${amount}mona(手数料0.01mona)送金するよ！間違いが無ければ'OK'と入力してね！`, user, null);
+			twitter.post(`${amount}mona(手数料0.01mona)送金するよ！間違いが無ければ'OK'と入力してね！`, user, null, [['OK','送金'],['Cancel','キャンセル']]);
 		}
 		//withdraw
 		else if(match = text.match(/(withdraw|出金)( |　)+(Z[a-zA-Z0-9]{20,50})( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
@@ -272,7 +275,7 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 			}
 			const amount = new BigNumber(match[5],10).minus(cms);
 			tipbot.addWaitingWithdraw(account, address, amount);
-			twitter.post(`${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null, ['OK','Cancel']);
+			twitter.post(`${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null, [['OK','送金'],['Cancel','キャンセル']]);
 		}
 		//withdrawall
 		else if(match = text.match(/(withdrawall|全額出金)( |　)+(Z[a-zA-Z0-9]{20,50})/)){
@@ -293,7 +296,7 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 				return;
 			}
 			tipbot.addWaitingWithdraw(account, address, amount);
-			twitter.post(`${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null);
+			twitter.post(`${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null, [['OK','送金'],['Cancel','キャンセル']]);
 		}
 		//thanks
 		else if(match = text.match(/(thanks|感謝)( |　)+@([A-z0-9_]+)/)){
@@ -363,34 +366,6 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 		}
 	}
 }
-
-tipbot.deleteRain = async (id) =>{ //does not wait
-	let data = await tipbot.getRain();
-	if(data[id]){
-		delete data[id];
-	}
-	fs.writeFile('./rain.json', JSON.stringify(data), (error) => {});
-}
-
-tipbot.addRain = async (id, account, amount) =>{ //does not wait
-	let data = await tipbot.getRain();
-	data[id] = {
-		"account" : account,
-		"amount" : amount,
-		"list" : []
-	};
-	fs.writeFile('./rain.json', JSON.stringify(data), (error) => {});
-}
-
-tipbot.getRain = () =>new Promise((resolve,reject)=>{
-	fs.readFile('./rain.json', 'utf8',(err,result)=>{
-		if(err){
-			logger.error("read error\n"+err)
-			return reject()
-		}
-		resolve(JSON.parse(result))
-	})
-})
 
 tipbot.addList = async (id, userid) =>{ //does not wait
 	let data = await tipbot.getRain();
@@ -565,19 +540,15 @@ twitter.sendDM = (text, sender, quick) => {
 	if(quick){
 		data["event"]["message_create"]["message_data"]["quick_reply"] = {
 			"type": "options",
-			"options": [
-				{
-					"label": quick[0],
-					"description": quick[0],
-					"metadata": "external_id_1"
-				},
-				{
-					"label": quick[1],
-					"description": quick[1],
-					"metadata": "external_id_2"
-				}
-			]
+			"options": []
 		};
+		for(let i in quick){
+			data["event"]["message_create"]["message_data"]["quick_reply"]["options"].push({
+				"label": quick[i][0],
+				"description": quick[i][1],
+				"metadata": `external_id_${i}`
+			});
+		}
 	}
 	bot.post('direct_messages/events/new', data, function(error, data, resp) {
 		if(error){
