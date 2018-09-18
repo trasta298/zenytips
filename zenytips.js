@@ -20,14 +20,14 @@ const MY_ID = "940524286531461120";//@zenytips
 
 tipbot.aaapi = async (data) => {
 	if(data.tweet_create_events && data.tweet_create_events[0].user.id_str != MY_ID){
-		tipbot.on(data.tweet_create_events[0].extended_tweet && data.tweet_create_events[0].extended_tweet.full_text ? data.tweet_create_events[0].extended_tweet.full_text : data.tweet_create_events[0].text, data.tweet_create_events[0].user, data.tweet_create_events[0].id_str)
+		tipbot.on(data.tweet_create_events[0].extended_tweet && data.tweet_create_events[0].extended_tweet.full_text ? data.tweet_create_events[0].extended_tweet.full_text : data.tweet_create_events[0].text, data.tweet_create_events[0].user, data.tweet_create_events[0].id_str, data.tweet_create_events[0]);
 	}else if(data.direct_message_events && data.direct_message_events[0].message_create.sender_id != MY_ID){
 		const sender = data.direct_message_events[0].message_create.sender_id;
-		tipbot.on(data.direct_message_events[0].message_create.message_data.text, data.users[sender], null);
+		tipbot.on(data.direct_message_events[0].message_create.message_data.text, data.users[sender], null, null);
 	}
 }
 
-tipbot.on = async (text, user, tweetid) => {
+tipbot.on = async (text, user, tweetid, tweetobj) => {
 	if (user == null) {return;}
 	
 	const userid = user.id_str || user.id;
@@ -42,6 +42,26 @@ tipbot.on = async (text, user, tweetid) => {
 		//help
 		if(text.match(/help|ヘルプ/i)){
 			twitter.post(`使い方は以下のリンクを見てください！\nhttps://github.com/trasta298/zenytips/blob/master/README.md`, user, tweetid);
+		}
+		//rain
+		else if(match = text.match(/(rain)( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
+			if(tweetid == null || tweetid == 0){
+				return;
+			}
+			logger.info(`@${name} rain- ${match[3]}zny`);
+			const amount = parseFloat(match[3]);
+			if(amount <= 0){
+				twitter.post("0イカの数は指定できませんっ！", user, tweetid);
+				return;
+			}
+			const balance = await client.getBalance(account, 6);
+			if(amount > balance){
+				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
+				return;
+			}
+			const tweet = `【お知らせ】\nリプライ先のツイートをRTした人に ${amount}znyのプレゼント！`;
+			twitter.post(tweet, user, tweetid);
+			tipbot.addRain(tweetid, account, amount);
 		}
 		//tip mona
 		else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(\d+\.?\d*|\d*\.?\d+)( |　)+mona/)){
@@ -91,7 +111,7 @@ tipbot.on = async (text, user, tweetid) => {
 			const to_account = "tipzeny-" + to_user.id_str;
 			await client.move(account, to_account, amount);
 			
-			const tweet = tipbot.getanswer(userid,to_name,amount, tipbot.generateanswer(to_name,name,amount))
+			const tweet = tipbot.getanswer(userid,to_name,amount, tipbot.generateanswer(to_name,name,amount));
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
 		}
@@ -193,6 +213,9 @@ tipbot.on = async (text, user, tweetid) => {
 		}
 		//withdraw mona
 		else if(match = text.match(/(withdraw|出金)( |　)+([MP][a-zA-Z0-9]{20,50})( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
+			if(tweetid != null){
+				return;
+			}
 			logger.info(`@${name} withdraw- ${match[5]}mona to ${match[3]}`);
 			const address = match[3];
 			const validate = await client_mona.validateAddress(address);
@@ -207,10 +230,13 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const amount = new BigNumber(match[5],10).minus(cms);
 			tipbot.addWaitingWithdraw(account_mona, address, amount);
-			twitter.post(`アドレス: ${address}\nに${amount}mona(手数料0.01mona)送金するよ！間違いが無ければ'OK'と入力してね！`, user, null);
+			twitter.post(`${amount}mona(手数料0.01mona)送金するよ！間違いが無ければ'OK'と入力してね！`, user, null);
 		}
 		//withdrawall mona
 		else if(match = text.match(/(withdrawall|全額出金)( |　)+([MP][a-zA-Z0-9]{20,50})/)){
+			if(tweetid != null){
+				return;
+			}
 			logger.info(`@${name} withdrawall- to ${match[3]}`);
 			const address = match[3];
 			const validate = await client_mona.validateAddress(address);
@@ -225,10 +251,13 @@ tipbot.on = async (text, user, tweetid) => {
 				return;
 			}
 			tipbot.addWaitingWithdraw(account_mona, address, amount);
-			twitter.post(`アドレス: ${address}\nに${amount}mona(手数料0.01mona)送金するよ！間違いが無ければ'OK'と入力してね！`, user, null);
+			twitter.post(`${amount}mona(手数料0.01mona)送金するよ！間違いが無ければ'OK'と入力してね！`, user, null);
 		}
 		//withdraw
 		else if(match = text.match(/(withdraw|出金)( |　)+(Z[a-zA-Z0-9]{20,50})( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
+			if(tweetid != null){
+				return;
+			}
 			logger.info(`@${name} withdraw- ${match[5]}zny to ${match[3]}`);
 			const address = match[3];
 			const validate = await client.validateAddress(address);
@@ -243,10 +272,13 @@ tipbot.on = async (text, user, tweetid) => {
 			}
 			const amount = new BigNumber(match[5],10).minus(cms);
 			tipbot.addWaitingWithdraw(account, address, amount);
-			twitter.post(`アドレス: ${address}\nに${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null);
+			twitter.post(`${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null);
 		}
 		//withdrawall
 		else if(match = text.match(/(withdrawall|全額出金)( |　)+(Z[a-zA-Z0-9]{20,50})/)){
+			if(tweetid != null){
+				return;
+			}
 			logger.info(`@${name} withdrawall- to ${match[3]}`);
 			const address = match[3];
 			const validate = await client.validateAddress(address);
@@ -261,7 +293,7 @@ tipbot.on = async (text, user, tweetid) => {
 				return;
 			}
 			tipbot.addWaitingWithdraw(account, address, amount);
-			twitter.post(`アドレス: ${address}\nに${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null);
+			twitter.post(`${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null);
 		}
 		//thanks
 		else if(match = text.match(/(thanks|感謝)( |　)+@([A-z0-9_]+)/)){
@@ -330,6 +362,50 @@ tipbot.on = async (text, user, tweetid) => {
 			logger.info(`@${name} score- ${score}`);
 		}
 	}
+}
+
+tipbot.deleteRain = async (id) =>{ //does not wait
+	let data = await tipbot.getRain();
+	if(data[id]){
+		delete data[id];
+	}
+	fs.writeFile('./rain.json', JSON.stringify(data), (error) => {});
+}
+
+tipbot.addRain = async (id, account, amount) =>{ //does not wait
+	let data = await tipbot.getRain();
+	data[id] = {
+		"account" : account,
+		"amount" : amount,
+		"list" : []
+	};
+	fs.writeFile('./rain.json', JSON.stringify(data), (error) => {});
+}
+
+tipbot.getRain = () =>new Promise((resolve,reject)=>{
+	fs.readFile('./rain.json', 'utf8',(err,result)=>{
+		if(err){
+			logger.error("read error\n"+err)
+			return reject()
+		}
+		resolve(JSON.parse(result))
+	})
+})
+
+tipbot.addList = async (id, userid) =>{ //does not wait
+	let data = await tipbot.getRain();
+	if(!data[id]){
+		return false;
+	}
+	for(let i in data[id]["list"]){
+		if(data[id]["list"][i] == userid){
+			return false;
+		}
+	}
+	data[id]["list"].push(userid);
+	fs.writeFile('./rain.json', JSON.stringify(data), (error) => {});
+	let obj = {"account":data[id]["account"],"amount":data[id]["amount"]};
+	return obj;
 }
 
 tipbot.addWaitingWithdraw = (account, address, amount) => {
