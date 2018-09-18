@@ -272,7 +272,7 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 			}
 			const amount = new BigNumber(match[5],10).minus(cms);
 			tipbot.addWaitingWithdraw(account, address, amount);
-			twitter.post(`${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null);
+			twitter.post(`${amount}zny(手数料${cms}zny)送金しますか？送金するなら'OK'と入力してください`, user, null, ['OK','Cancel']);
 		}
 		//withdrawall
 		else if(match = text.match(/(withdrawall|全額出金)( |　)+(Z[a-zA-Z0-9]{20,50})/)){
@@ -534,9 +534,9 @@ const bot = new TwitterAPI({
 	access_token_secret: config.zenytips.TWITTER_ACCESS_TOKEN_SECRET
 });
 
-twitter.post = (text, user, id) => {
+twitter.post = (text, user, id, quick = null) => {
 	if(id === null){
-		twitter.sendDM(text, user.id);
+		twitter.sendDM(text, user.id, quick);
 	}else if(id === 0){
 		twitter.update(text, null);
 	}else{
@@ -553,8 +553,33 @@ twitter.update = (text, in_reply) => {
 	});
 }
 
-twitter.sendDM = (text, sender) => {
-	bot.post('direct_messages/events/new', {"event": {"type": "message_create", "message_create": {"target": {"recipient_id": sender}, "message_data": {"text": text}}}}, function(error, data, resp) {
+twitter.sendDM = (text, sender, quick) => {
+	const data = {"event": {"type": "message_create", "message_create": {
+		"target": {
+			"recipient_id": sender
+		}, 
+		"message_data": {
+			"text": text
+		}
+	}}};
+	if(quick){
+		data["event"]["message_create"]["message_data"]["quick_reply"] = {
+			"type": "options",
+			"options": [
+				{
+					"label": quick[0],
+					"description": quick[0],
+					"metadata": "external_id_1"
+				},
+				{
+					"label": quick[1],
+					"description": quick[1],
+					"metadata": "external_id_2"
+				}
+			]
+		};
+	}
+	bot.post('direct_messages/events/new', data, function(error, data, resp) {
 		if(error){
 			logger.error(error);
 		}
