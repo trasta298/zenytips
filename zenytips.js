@@ -9,7 +9,7 @@ const fs = require('fs');
 const log4js = require('log4js');
 const client = require('./client');
 const client_mona = require('./client_mona');
-const TwitterAPI = require('twitter');
+const TwitterAPI = require('twit');
 const config = require('./config.json');
 log4js.configure('./log4js.config.json');
 const logger = log4js.getLogger('bot');
@@ -530,13 +530,13 @@ tipbot.generateanswer_mona=(to,from,amount)=>{
 const bot = new TwitterAPI({
 	consumer_key: config.zenytips.TWITTER_CONSUMER_KEY,
 	consumer_secret: config.zenytips.TWITTER_CONSUMER_SECRET,
-	access_token_key: config.zenytips.TWITTER_ACCESS_TOKEN,
+	access_token: config.zenytips.TWITTER_ACCESS_TOKEN,
 	access_token_secret: config.zenytips.TWITTER_ACCESS_TOKEN_SECRET
 });
 
 twitter.post = (text, user, id) => {
 	if(id === null){
-		twitter.sendDM(text, user.screen_name);
+		twitter.sendDM(text, user.id);
 	}else if(id === 0){
 		twitter.update(text, null);
 	}else{
@@ -554,7 +554,7 @@ twitter.update = (text, in_reply) => {
 }
 
 twitter.sendDM = (text, sender) => {
-	bot.post('direct_messages/new', {screen_name: sender, text: text }, function(error, data, resp) {
+	bot.post('direct_messages/events/new', {"event": {"type": "message_create", "message_create": {"target": {"recipient_id": sender}, "message_data": {"text": text}}}}, function(error, data, resp) {
 		if(error){
 			logger.error(error);
 		}
