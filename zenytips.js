@@ -81,11 +81,12 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 				return;
 			}
 			const to_name = match[3] == "zenytips" ? "tra_sta" : match[3];
-			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
-			if(to_user == null){
+			const to_userdata = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
+			if(to_userdata == null){
 				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
 				return;
 			}
+			const to_user = to_userdata.data;
 			const balance = await client_mona.getBalance(account_mona, 30);
 			if(amount > balance){
 				twitter.post(`残高が足りないよー！\n残高:${balance}mona`, user, tweetid);
@@ -107,11 +108,12 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 				return;
 			}
 			const to_name = match[3] == "zenytips" ? "tra_sta" : match[3];
-			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
-			if(to_user == null){
+			const to_userdata = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
+			if(to_userdata == null){
 				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
 				return;
 			}
+			const to_user = to_userdata.data;
 			const balance = await client.getBalance(account, 6);
 			if(amount > balance){
 				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
@@ -127,6 +129,9 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 			}
 
 			await client.move(account, to_account, amount);
+			console.log(to_account);
+			const bl = await client.getBalance(to_account,0);
+			console.log(bl);
 			const tweet = tipbot.getanswer(userid,to_name,amount, tipbot.generateanswer(to_name,name,amount));
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
@@ -140,11 +145,12 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 				return;
 			}
 			const to_name = mention[1] == "zenytips" ? "tra_sta" : mention[1];
-			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
-			if(to_user == null){
+			const to_userdata = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
+			if(to_userdata == null){
 				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
 				return;
 			}
+			const to_user = to_userdata.data;
 			const balance = await client.getBalance(account, 6);
 			if(amount > balance){
 				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
@@ -156,7 +162,8 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 		}
 		//Tip OK
 		else if(text.match(/Tip/) && (tipdata = tipbot.getWaitingTip(account))){
-			await client.move(account, tipdata.to_account, tipdata.amount);
+			const res = await client.move(account, tipdata.to_account, tipdata.amount);
+			console.log(res);
 			const tweet = tipbot.getanswer(userid,tipdata.to_name,tipdata.amount, tipbot.generateanswer(tipdata.to_name,name,tipdata.amount))
 			twitter.post(tweet, user, tipdata.tweetid);
 			logger.info("- complete.");
@@ -316,11 +323,12 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 			const amount = 3.939;
 			logger.info(`@${name} tip- to @${match[3]} ${amount}zny`);
 			const to_name = match[3] == "zenytips" ? "tra_sta" : match[3];
-			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
-			if(to_user == null){
+			const to_userdata = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
+			if(to_userdata == null){
 				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
 				return;
 			}
+			const to_user = to_userdata.data;
 			const balance = await client.getBalance(account, 6);
 			if(amount > balance){
 				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
@@ -337,11 +345,12 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 			const amount = 1.14;
 			logger.info(`@${name} tip- to @${match[3]} ${amount}zny`);
 			const to_name = match[3] == "zenytips" ? "tra_sta" : match[3];
-			const to_user = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
-			if(to_user == null){
+			const to_userdata = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
+			if(to_userdata == null){
 				twitter.post("ユーザーが見つかりませんでした...", user, tweetid);
 				return;
 			}
+			const to_user = to_userdata.data;
 			const balance = await client.getBalance(account, 6);
 			if(amount > balance){
 				twitter.post(`残高が足りないみたいですっ\n残高:${balance}zny`, user, tweetid);
