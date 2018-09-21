@@ -129,9 +129,7 @@ tipbot.on = async (text, user, tweetid, tweetobj) => {
 			}
 
 			await client.move(account, to_account, amount);
-			console.log(to_account);
-			const bl = await client.getBalance(to_account,0);
-			console.log(bl);
+			
 			const tweet = tipbot.getanswer(userid,to_name,amount, tipbot.generateanswer(to_name,name,amount));
 			twitter.post(tweet, user, tweetid);
 			logger.info("- complete.");
@@ -477,7 +475,7 @@ tipbot.getscore = (id, val) =>new Promise((resolve,reject)=>{
 			logger.error("read error\n"+err)
 			return reject()
 		}
-		resolve(JSON.parse(result)[id][val] || 0)
+		resolve(id in JSON.parse(result) && val in JSON.parse(result)[id] ? JSON.parse(result)[id][val] : 0);
 	})
 })
 
