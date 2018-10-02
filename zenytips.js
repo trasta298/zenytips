@@ -13,7 +13,7 @@ const client_mona = require('./client_mona');
 const TwitterAPI = require('twit');
 const config = require('./config.json');
 log4js.configure('./log4js.config.json');
-const logger = log4js.getLogger('bot');
+const logger = log4js.getLogger('zeny');
 const BigNumber = require('bignumber.js');
 BigNumber.config({ DECIMAL_PLACES: 8 });
 
@@ -63,32 +63,27 @@ tipbot.on = async (text, user ,tweetid) => {
 		twitter.post(`使い方は以下のリンクを見てください！\nhttps://github.com/trasta298/zenytips/blob/master/README.md`, user, tweetid);
 	}
 	/**
-	 * Settings 設定
-	 */
-	if(text.search(/Settings|設定/i) == 0){
-		twitter.post(`TipするときDMで毎回確認をするときは'tip-check-on'、しないときは'tip-check-off'と入力してください！`, user, null, 
-			[['tip-check-on','tipの確認設定をする'],['tip-check-off','tipの確認設定をしない']]
-		);
-	}
-	/**
-	 * tip check
-	 */
-	if(match = text.match(/tip-check-(on|off)/i)){
-		const val = match[1] == "on" ? true : false;
-		tipbot.changesetting(userid, "tip-check",val);
-		twitter.post(`tip時のDM確認を${match[1]}に設定しました！`, user, null);
-	}
-	/**
 	 * add mojis
 	 */
 	if(match = text.match(/(addmojis)( |　)+(.*)( |　)+(\d+\.?\d*|\d*\.?\d+)/)){
-		if(!isNaN(match[3]) || mojis[match[3]]){
+		if(!isNaN(match[3])){
 			twitter.post("無効な文字列です！", user, tweetid);
+			return;
+		}
+		if(mojis[match[3]]){
+			twitter.post(`${match[3]} (${mojis[match[3]]["amount"]}zny)はすでに追加されています！`, user, tweetid);
 			return;
 		}
 		const amount = new BigNumber(match[5], 10);
 		tipbot.addmojis(match[3], amount, "");
 		twitter.post(`${match[3]} (${amount}zny)をtipオプションに追加しました！`, user, tweetid);
+	}
+	/**
+	 * message
+	 */
+	else if(match = text.match(/message( |　)(.*)/)){
+		twitter.post(`開発(@tra_sta)からのメッセージです！\n「${match[2]}」`, user, 0);
+		logger.info(`@${name} messege- ${match[2]}`);
 	}
 	/**
 	 * balance 残高
@@ -146,11 +141,15 @@ tipbot.on = async (text, user ,tweetid) => {
 	/**
 	 * tip mojis
 	 */
-	else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(.*)($| |　)+/)){
-		if(!mojis[match[5]]){
+	else if(match = text.match(/(tip|send|投げ銭|投銭)( |　)+@([A-z0-9_]+)( |　)+(.*)/)){
+		const match2 = match[5].split(/ |　/);
+		if(Object.keys(mojis).length === 0){
+			mojis = await tipbot.getallmojis();
+		}
+		if(!mojis[match2[0]]){
 			return;
 		}
-		const amount = new BigNumber(mojis[match[5]]["amount"]);
+		const amount = new BigNumber(mojis[match2[0]]["amount"]);
 		const to_name = match[3] == "zenytips" ? "tra_sta" : match[3];
 		const to_userdata = await bot.get('users/show', {screen_name: to_name}).catch(() => null);
 		if(amount <= 0){

@@ -8,11 +8,23 @@
             "filename": "./logs/console.log",
             "pattern": "-yyyy-MM-dd.log",
             "alwaysIncludePattern": true
+        },
+        "zeny": {
+            "type": "dateFile",
+            "filename": "./logs/console",
+            "pattern": "-yyyy-MM-dd.log",
+            "alwaysIncludePattern": true
+        },
+        "mona": {
+            "type": "dateFile",
+            "filename": "./logs/console",
+            "pattern": "-yyyy-MM-dd.log",
+            "alwaysIncludePattern": true
         }
     },
     "categories": {
         "default":{
-            "appenders": ["out","bot"],
+            "appenders": ["out","bot","zeny","mona"],
             "level": "debug"
         }
     }
