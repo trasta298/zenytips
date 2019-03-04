@@ -44,6 +44,11 @@ botが止まっていた時や質問があるときは[開発者twitter](https:/
 
 ## thanks
 ### @zenytips send @twitterアカウント (コメント)
-3.939ZNYを相手に送ります。
-例:`@zenytips thanks @tra_sta yay!` 
+3.939ZNYを相手に送ります。  
+例:`@zenytips thanks @tra_sta yay!`  
+
+## history/履歴
+### @zenytips history (件数)
+過去のtip、入出金の履歴を見ることができます。DMでのみ使用できます。  
+例:`@zenytips history 10` 
 
